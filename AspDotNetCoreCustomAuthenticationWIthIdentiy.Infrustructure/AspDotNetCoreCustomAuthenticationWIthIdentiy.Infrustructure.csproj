@@ -7,6 +7,10 @@
   <ItemGroup>
     <Compile Remove="Migrations\20201022200954_AddingIdentity.cs" />
     <Compile Remove="Migrations\20201022200954_AddingIdentity.Designer.cs" />
+    <Compile Remove="Migrations\20201022203837_AddingIdentity.cs" />
+    <Compile Remove="Migrations\20201022203837_AddingIdentity.Designer.cs" />
+    <Compile Remove="Migrations\20201026164603_custom_user.cs" />
+    <Compile Remove="Migrations\20201026164603_custom_user.Designer.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,6 +23,10 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="3.1.9" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.1.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AspDotNetCoreCustomAuthenticationWIthIdentiy.Domain\AspDotNetCoreCustomAuthenticationWIthIdentiy.Domain.csproj" />
   </ItemGroup>
 
 </Project>

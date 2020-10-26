@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace AspDotNetCoreCustomAuthenticationWIthIdentiy.Infrustructure.Migrations
 {
-    public partial class AddingIdentity : Migration
+    public partial class custom_user : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -39,7 +39,8 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy.Infrustructure.Migrations
                     TwoFactorEnabled = table.Column<bool>(nullable: false),
                     LockoutEnd = table.Column<DateTimeOffset>(nullable: true),
                     LockoutEnabled = table.Column<bool>(nullable: false),
-                    AccessFailedCount = table.Column<int>(nullable: false)
+                    AccessFailedCount = table.Column<int>(nullable: false),
+                    token = table.Column<string>(nullable: true)
                 },
                 constraints: table =>
                 {

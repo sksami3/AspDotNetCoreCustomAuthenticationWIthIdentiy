@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace AspDotNetCoreCustomAuthenticationWIthIdentiy.ViewModels
 {
-    public class RegisterVM
+    public class UserVM
     {
         public string UserName { get; set; }
         public string Email { get; set; }

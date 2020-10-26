@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AspDotNetCoreCustomAuthenticationWIthIdentiy.Domain.AuthModel;
 using AspDotNetCoreCustomAuthenticationWIthIdentiy.ViewModels;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -14,17 +15,17 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy.Controllers
     [ApiController]
     public class UserController : ControllerBase
     {
-        public UserManager<IdentityUser> UserManager { get; }
-        public SignInManager<IdentityUser> SignInManager { get; }
+        public UserManager<ApplicationUser> UserManager { get; }
+        public SignInManager<ApplicationUser> SignInManager { get; }
 
-        public UserController(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager)
+        public UserController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
         {
             UserManager = userManager;
             SignInManager = signInManager;
         }
         // GET: api/<UserController>
         [HttpGet]
-        public IQueryable<IdentityUser> Get()
+        public IQueryable<ApplicationUser> Get()
         {
             return UserManager.Users;
         }
@@ -37,12 +38,12 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy.Controllers
         }
 
         // POST api/<UserController>
-        [HttpPost]
-        public async Task<bool> Post(RegisterVM registerVM)
+        [HttpPost("register")]
+        public async Task<bool> Register(UserVM registerVM)
         {
             if (registerVM != null)
             {
-                var user = new IdentityUser { Email = registerVM.Email, UserName = registerVM.UserName };
+                var user = new ApplicationUser { Email = registerVM.Email, UserName = registerVM.UserName };
                 var result = await UserManager.CreateAsync(user, registerVM.Password);
                 if (result.Succeeded)
                 {
@@ -57,6 +58,22 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy.Controllers
                 return false;
         }
 
+        // POST api/<UserController>
+        [HttpPost("authenticate")]
+        public async Task<bool> Authenticate(UserVM registerVM)
+        {
+            if (registerVM != null)
+            {
+                var result = await SignInManager.PasswordSignInAsync(registerVM.UserName, registerVM.Password, false, true);
+                if (result.Succeeded)
+                    return true;
+                else
+                    //result.Errors;
+                    return false;
+            }
+            else
+                return false;
+        }
         // PUT api/<UserController>/5
         [HttpPut("{id}")]
         public void Put(int id, [FromBody] string value)

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Threading.Tasks;
+using AspDotNetCoreCustomAuthenticationWIthIdentiy.Domain.AuthModel;
 using AspDotNetCoreCustomAuthenticationWIthIdentiy.Infrustructure;
 using IdentityServer4.Stores;
 using Microsoft.AspNetCore.Authentication;
@@ -55,7 +57,7 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy
 
             //services.AddIdentity<IdentityUser, AuthDbContext>()
             //    .AddEntityFrameworkStores<AuthDbContext>();
-            services.AddIdentity<IdentityUser, IdentityRole>(options =>
+            services.AddIdentity<ApplicationUser, IdentityRole>(options =>
             {
                 options.Password.RequiredLength = 4;
                 options.Password.RequireNonAlphanumeric = false;
@@ -91,6 +93,8 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy
             app.UseAuthorization();
 
             app.UseIdentityServer();
+
+            JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
             app.UseEndpoints(endpoints =>
             {
