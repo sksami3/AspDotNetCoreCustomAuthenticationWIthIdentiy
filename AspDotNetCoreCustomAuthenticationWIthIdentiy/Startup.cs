@@ -57,7 +57,7 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy
 
             //services.AddIdentity<IdentityUser, AuthDbContext>()
             //    .AddEntityFrameworkStores<AuthDbContext>();
-            services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+            var identity = services.AddIdentity<ApplicationUser, IdentityRole>(options =>
             {
                 options.Password.RequiredLength = 4;
                 options.Password.RequireNonAlphanumeric = false;
@@ -68,13 +68,37 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy
                 .AddEntityFrameworkStores<AuthDbContext>()
                 .AddDefaultTokenProviders();
 
+            identity.AddClaimsPrincipalFactory<ClaimsPrincipalFactory>();
+
             services.AddAuthentication()
                     .AddIdentityServerJwt();
+
+            services.AddAuthorization(options =>
+            {
+
+                options.AddPolicy("admin",
+                    authBuilder =>
+                    {
+                        authBuilder.RequireRole("admin");
+                    });
+
+            });
 
             services.AddIdentityServer()
                     .AddInMemoryCaching()
                     .AddClientStore<InMemoryClientStore>()
                     .AddResourceStore<InMemoryResourcesStore>();
+
+            //CROS
+            services.AddCors(options =>
+            {
+                options.AddPolicy("foo",
+                builder =>
+                {
+                    // Not a permanent solution, but just trying to isolate the problem
+                    builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+                });
+            });
 
         }
 
@@ -93,6 +117,12 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy
             app.UseAuthorization();
 
             app.UseIdentityServer();
+
+            //CORS
+            app.UseHttpsRedirection();
+
+            // Use the CORS policy
+            app.UseCors("foo");
 
             JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 

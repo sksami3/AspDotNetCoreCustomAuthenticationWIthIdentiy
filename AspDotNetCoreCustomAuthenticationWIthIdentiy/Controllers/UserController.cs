@@ -1,11 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Security.Claims;
+using System.Text;
 using System.Threading.Tasks;
 using AspDotNetCoreCustomAuthenticationWIthIdentiy.Domain.AuthModel;
 using AspDotNetCoreCustomAuthenticationWIthIdentiy.ViewModels;
+using IdentityModel;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -60,20 +66,67 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy.Controllers
 
         // POST api/<UserController>
         [HttpPost("authenticate")]
-        public async Task<bool> Authenticate(UserVM registerVM)
+        public async Task<IActionResult> Authenticate(UserVM registerVM)
         {
             if (registerVM != null)
             {
-                var result = await SignInManager.PasswordSignInAsync(registerVM.UserName, registerVM.Password, false, true);
-                if (result.Succeeded)
-                    return true;
-                else
-                    //result.Errors;
-                    return false;
+                try
+                {
+                    #region Basic
+                    //var result = await SignInManager.PasswordSignInAsync(registerVM.UserName, registerVM.Password, false, true);
+                    #endregion
+                    #region with token generation
+                    var result = GenerateToken(await UserManager.FindByNameAsync(registerVM.UserName));
+                    #endregion
+                    if (result != null)
+                    {
+                        //await SignInManager.PasswordSignInAsync(registerVM.UserName, registerVM.Password, false, true);
+                        return Ok(result);
+                    }
+                    else
+                        //result.Errors;
+                        return Content("Error in login");
+                }
+                catch(Exception e)
+                {
+                    throw e;
+                }
+                 
             }
             else
-                return false;
+               return Content("Input error!!");
         }
+        private ApplicationUser GenerateToken(ApplicationUser user)
+        {
+            // authentication successful so generate jwt token
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var secret = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build().GetSection("AppSettings")["Secret"];
+            var key = Encoding.ASCII.GetBytes(secret);
+            try
+            {
+                var tokenDescriptor = new SecurityTokenDescriptor
+                {
+                    Subject = new ClaimsIdentity(new Claim[]
+                {
+                    new Claim(ClaimTypes.Name, user.UserName.ToString()),
+                    //new Claim(ClaimTypes.Role, user.Role),
+                    new Claim(ClaimTypes.Email, user.Email)
+                }),
+                    Expires = DateTime.UtcNow.AddDays(7),
+                    SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+                };
+                var token = tokenHandler.CreateToken(tokenDescriptor);
+                user.token = tokenHandler.WriteToken(token);
+                return user;
+
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+
+        }
+
         // PUT api/<UserController>/5
         [HttpPut("{id}")]
         public void Put(int id, [FromBody] string value)
