@@ -82,6 +82,11 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy
                         authBuilder.RequireRole("admin");
                     });
 
+                options.AddPolicy("CreateRole", policy =>
+                {
+                    policy.RequireClaim("Create Role");
+                });
+
             });
 
             services.AddIdentityServer()

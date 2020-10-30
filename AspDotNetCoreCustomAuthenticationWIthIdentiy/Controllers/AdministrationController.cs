@@ -46,6 +46,7 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy.Controllers
 
         // POST api/<AdministrationController>
         [HttpPost("createRole")]
+        [Authorize(Policy ="CreateRole")]
         public async Task<IActionResult> CreateRole(string role)
         {
             if (string.IsNullOrEmpty(role))
