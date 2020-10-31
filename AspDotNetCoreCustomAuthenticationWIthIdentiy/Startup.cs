@@ -1,12 +1,17 @@
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using AspDotNetCoreCustomAuthenticationWIthIdentiy.Domain.AuthModel;
+using AspDotNetCoreCustomAuthenticationWIthIdentiy.Helper;
 using AspDotNetCoreCustomAuthenticationWIthIdentiy.Infrustructure;
 using IdentityServer4.Stores;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -17,6 +22,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Logging;
+using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json;
 
 namespace AspDotNetCoreCustomAuthenticationWIthIdentiy
 {
@@ -33,30 +41,8 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
-
             services.AddDbContext<AuthDbContext>(options =>
                     options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
-
-            //services.Configure<IdentityOptions>(options =>
-            //{
-            //    options.Password.RequiredLength = 4;
-            //    options.Password.RequireNonAlphanumeric = false;
-            //    options.Password.RequiredUniqueChars = 0;
-            //    options.Password.RequireUppercase = false;
-            //    options.Password.RequireLowercase = false;
-            //});
-
-
-            //services.AddDbContext<AuthDbContext>();
-
-            //services.AddDefaultIdentity<IdentityUser, AuthDbContext>()
-            //    .AddEntityFrameworkStores<AuthDbContext>();
-
-            //services.AddIdentityServer()
-            //        .AddApiAuthorization<IdentityUser, AuthDbContext>();
-
-            //services.AddIdentity<IdentityUser, AuthDbContext>()
-            //    .AddEntityFrameworkStores<AuthDbContext>();
             var identity = services.AddIdentity<ApplicationUser, IdentityRole>(options =>
             {
                 options.Password.RequiredLength = 4;
@@ -64,36 +50,60 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy
                 options.Password.RequiredUniqueChars = 0;
                 options.Password.RequireUppercase = false;
                 options.Password.RequireLowercase = false;
+                options.SignIn.RequireConfirmedEmail = true;
             })
                 .AddEntityFrameworkStores<AuthDbContext>()
                 .AddDefaultTokenProviders();
-
             identity.AddClaimsPrincipalFactory<ClaimsPrincipalFactory>();
-
-            services.AddAuthentication()
-                    .AddIdentityServerJwt();
-
+            #region basic authentication
+            //services.AddAuthentication()
+            //        .AddIdentityServerJwt();
+            #endregion
+            #region JWT token based authentication
+            // configure strongly typed settings objects
+            var appSettingsSection = Configuration.GetSection("AppSettings");
+            services.Configure<AppSettings>(appSettingsSection);
+            // configure jwt authentication
+            var appSettings = appSettingsSection.Get<AppSettings>();
+            var key = Encoding.ASCII.GetBytes(appSettings.Secret);
+            services.AddAuthentication(x =>
+            {
+                x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(x =>
+            {
+                x.RequireHttpsMetadata = false;
+                x.SaveToken = true;
+                x.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = false,
+                    ValidateAudience = false
+                };
+            });
+            services.AddControllers().AddNewtonsoftJson(options =>
+            {
+                options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
+            });
+            #endregion
             services.AddAuthorization(options =>
             {
-
                 options.AddPolicy("admin",
                     authBuilder =>
                     {
                         authBuilder.RequireRole("admin");
                     });
-
                 options.AddPolicy("CreateRole", policy =>
                 {
                     policy.RequireClaim("Create Role");
                 });
-
             });
-
             services.AddIdentityServer()
                     .AddInMemoryCaching()
                     .AddClientStore<InMemoryClientStore>()
                     .AddResourceStore<InMemoryResourcesStore>();
-
             //CROS
             services.AddCors(options =>
             {
@@ -104,7 +114,7 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy
                     builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
                 });
             });
-
+            IdentityModelEventSource.ShowPII = true;
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AspDotNetCoreCustomAuthenticationWIthIdentiy.Controllers
 {
+    [Authorize(AuthenticationSchemes = "Bearer")]
     [Route("api/[controller]")]
     [ApiController]
     //[Authorize("admin")]
@@ -46,9 +47,10 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy.Controllers
 
         // POST api/<AdministrationController>
         [HttpPost("createRole")]
-        [Authorize(Policy ="CreateRole")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> CreateRole(string role)
         {
+            var user = User.Claims.ToList();
             if (string.IsNullOrEmpty(role))
                 return StatusCode(404);
             var newRole = new IdentityRole { Name = role };

@@ -6,11 +6,13 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 using AspDotNetCoreCustomAuthenticationWIthIdentiy.Domain.AuthModel;
+using AspDotNetCoreCustomAuthenticationWIthIdentiy.Helper;
 using AspDotNetCoreCustomAuthenticationWIthIdentiy.ViewModels;
 using IdentityModel;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -23,11 +25,15 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy.Controllers
     {
         public UserManager<ApplicationUser> UserManager { get; }
         public SignInManager<ApplicationUser> SignInManager { get; }
+        private readonly ILogger<UserController> _logger;
 
-        public UserController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
+        public UserController(UserManager<ApplicationUser> userManager,
+            SignInManager<ApplicationUser> signInManager,
+            ILogger<UserController> logger)
         {
             UserManager = userManager;
             SignInManager = signInManager;
+            _logger = logger;
         }
         // GET: api/<UserController>
         [HttpGet]
@@ -53,8 +59,12 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy.Controllers
                 var result = await UserManager.CreateAsync(user, registerVM.Password);
                 if (result.Succeeded)
                 {
-                    await SignInManager.SignInAsync(user, isPersistent: false);
-                    return true;
+                    var token = await UserManager.GenerateEmailConfirmationTokenAsync(user);
+                    _logger.Log(LogLevel.Warning, token);
+                    bool isSent = EmailSender.SendEmail(user, token);
+
+                    //await SignInManager.SignInAsync(user, isPersistent: false);
+                    return isSent;
                 }
                 else
                     //result.Errors;
@@ -64,6 +74,21 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy.Controllers
                 return false;
         }
 
+        [HttpPost("confirmEmail")]
+        public async Task<IActionResult> ConfirmEmail(string userId,string token)
+        {
+            if(string.IsNullOrEmpty(userId) && string.IsNullOrEmpty(token))
+            {
+                var result = await UserManager.ConfirmEmailAsync(await UserManager.FindByIdAsync(userId), token);
+                if (result.Succeeded)
+                    return StatusCode(200);
+                else
+                    StatusCode(500);
+            }
+            return StatusCode(404);
+        }
+
+
         // POST api/<UserController>
         [HttpPost("authenticate")]
         public async Task<IActionResult> Authenticate(UserVM registerVM)
@@ -72,60 +97,35 @@ namespace AspDotNetCoreCustomAuthenticationWIthIdentiy.Controllers
             {
                 try
                 {
-                    #region Basic
-                    //var result = await SignInManager.PasswordSignInAsync(registerVM.UserName, registerVM.Password, false, true);
-                    #endregion
+                    //#region Basic
+                    ////var result = await SignInManager.PasswordSignInAsync(registerVM.UserName, registerVM.Password, false, true);
+                    //#endregion
                     #region with token generation
-                    var result = GenerateToken(await UserManager.FindByNameAsync(registerVM.UserName));
-                    #endregion
-                    if (result != null)
+                    var result = await SignInManager.PasswordSignInAsync(registerVM.UserName, registerVM.Password, true, false);
+                    if (result.Succeeded)
                     {
-                        //await SignInManager.PasswordSignInAsync(registerVM.UserName, registerVM.Password, false, true);
-                        return Ok(result);
+                        var user = await UserManager.FindByNameAsync(registerVM.UserName);
+                        var roles = await UserManager.GetRolesAsync(user);
+                        var claims = await UserManager.GetClaimsAsync(user);
+                        user = JwtTokenGeneration.GenerateToken(user, roles,claims);
+
+                        return Ok(user);
                     }
+                    #endregion
                     else
                         //result.Errors;
                         return Content("Error in login");
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     throw e;
                 }
-                 
+
             }
             else
-               return Content("Input error!!");
+                return Content("Input error!!");
         }
-        private ApplicationUser GenerateToken(ApplicationUser user)
-        {
-            // authentication successful so generate jwt token
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var secret = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build().GetSection("AppSettings")["Secret"];
-            var key = Encoding.ASCII.GetBytes(secret);
-            try
-            {
-                var tokenDescriptor = new SecurityTokenDescriptor
-                {
-                    Subject = new ClaimsIdentity(new Claim[]
-                {
-                    new Claim(ClaimTypes.Name, user.UserName.ToString()),
-                    //new Claim(ClaimTypes.Role, user.Role),
-                    new Claim(ClaimTypes.Email, user.Email)
-                }),
-                    Expires = DateTime.UtcNow.AddDays(7),
-                    SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-                };
-                var token = tokenHandler.CreateToken(tokenDescriptor);
-                user.token = tokenHandler.WriteToken(token);
-                return user;
 
-            }
-            catch (Exception e)
-            {
-                throw e;
-            }
-
-        }
 
         // PUT api/<UserController>/5
         [HttpPut("{id}")]
